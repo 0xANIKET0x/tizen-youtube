@@ -16,7 +16,7 @@ const outDir = join(__dirname, '..', legacy ? paths.SERVICE_DIST_LEGACY : paths.
 const bundle = join(outDir, 'index.js');
 const assetsDir = join(outDir, 'assets');
 
-const run = (command, args) => execFileSync(command, args, { cwd: root, stdio: 'inherit' });
+const run = (command, args) => execFileSync(command, args, { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' });
 
 const kb = (bytes) => `${Math.round(bytes / 1024)}kB`;
 

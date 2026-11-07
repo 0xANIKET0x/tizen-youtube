@@ -3,9 +3,85 @@
 <head>
 <meta charset="utf-8">
 <title>YouTube</title>
+<style>
+    body {
+        margin: 0;
+        background: #000;
+        color: #aaa;
+        font: 1.4vw monospace;
+        padding: 6vh 6vw;
+    }
+    .note { color: #55ffff; }
+    .warn { color: #ffff55; }
+    .bad { color: #ff5555; }
+    .ok { color: #55ff55; }
+    #log { margin-top: 20px; white-space: pre-wrap; }
+</style>
 </head>
-<body style="margin:0;background:#000;color:#aaa;font:1.4vw monospace;padding:6vh 6vw">
-<p>This app runs inside Samsung's Cobalt container, which the television starts in place of this
+<body>
+<p id="msg">This app runs inside Samsung's Cobalt container, which the television starts in place of this
 page. Seeing this means the set did not hand the launch over.</p>
+<div id="log"></div>
+
+<script>
+(function() {
+    var logEl = document.getElementById('log');
+    var msgEl = document.getElementById('msg');
+    function log(text, cls) {
+        if (!logEl) return;
+        var p = document.createElement('p');
+        p.className = cls || '';
+        p.textContent = text;
+        logEl.appendChild(p);
+    }
+
+    async function tryRecover() {
+        if (typeof tizen === 'undefined') return;
+        log('Attempting Tizen 9/10 service recovery via wrt:service...', 'note');
+
+        var ServiceClass = null;
+        try {
+            var mod = await import('wrt:service');
+            if (mod && mod.Service) ServiceClass = mod.Service;
+        } catch (e) {}
+
+        if (!ServiceClass) {
+            await new Promise(function(resolve) {
+                var done = function() {
+                    window.removeEventListener('tb-wrt-service', done);
+                    resolve();
+                };
+                window.addEventListener('tb-wrt-service', done);
+                setTimeout(done, 2000);
+                try {
+                    var s = document.createElement('script');
+                    s.type = 'module';
+                    s.textContent = "import { Service } from 'wrt:service'; window.tbWrtService = Service; window.dispatchEvent(new Event('tb-wrt-service'));";
+                    s.onerror = done;
+                    document.head.appendChild(s);
+                } catch (err) { done(); }
+            });
+            ServiceClass = window.tbWrtService;
+        }
+
+        if (ServiceClass) {
+            try {
+                log('Starting tUb3Xq7Lm9.TubeService via wrt:service...', 'note');
+                var svc = new ServiceClass('tUb3Xq7Lm9.TubeService');
+                var res = svc.start();
+                if (res && typeof res.then === 'function') await res;
+                log('Background service start acknowledged. You can open YT now.', 'ok');
+                if (tizen.application && tizen.application.launch) {
+                    tizen.application.launch('tUb3Xq7Lm9.Tube');
+                }
+            } catch (err) {
+                log('Service start error: ' + (err && err.message ? err.message : err), 'warn');
+            }
+        }
+    }
+
+    tryRecover();
+})();
+</script>
 </body>
 </html>

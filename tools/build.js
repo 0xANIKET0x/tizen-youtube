@@ -9,12 +9,14 @@ const { load, ROOT } = require('./lib/config.js');
 const paths = require('./lib/paths.js');
 const { assertNoTokens } = require('./lib/inject.js');
 
+const NPX = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+
 // Both services embed the userscript, so it builds first.
 const STEPS = [
     {
         label: 'userscript bundle',
         target: 'modern',
-        command: ['npx', ['rollup', '-c', 'tools/lib/rollup.config.mjs']],
+        command: [NPX, ['rollup', '-c', 'tools/lib/rollup.config.mjs']],
         // Both widgets carry this same bundle, so it is held to the older engine of the two.
         after: [
             ['node', ['tools/check-output.js', paths.BUNDLE, 'cobalt20']],
@@ -63,7 +65,8 @@ function runStep(step) {
             cwd: ROOT,
             env: Object.assign({}, process.env, { TUBE_TARGET: step.target }),
             stdio: 'pipe',
-            encoding: 'utf8'
+            encoding: 'utf8',
+            shell: process.platform === 'win32'
         }));
     } catch (e) {
         const error = new Error(

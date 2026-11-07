@@ -21,6 +21,14 @@ const APPS = [
         servedFrom: `http://127.0.0.2:${PROXY}/tv`,
         // Its own package, so neither widget installs over the other.
         packageId: 'tUb3Xq7L50'
+    },
+    {
+        label: 'YT service and launcher (tizen 9+)',
+        output: paths.WGT_LAUNCHER,
+        include: paths.WIDGET_LAUNCHER,
+        requiredVersion: null,
+        servedFrom: null,
+        packageId: null
     }
 ];
 
