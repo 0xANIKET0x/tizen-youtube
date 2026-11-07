@@ -228,10 +228,6 @@
     var targetServiceId = 'tUb3Xq7Lm9.TubeService';
     var countdownTimer = null;
 
-    var SESSION_KEY = 'yt_service_session_active';
-    var SESSION_TIME_KEY = 'yt_service_session_time';
-    var SESSION_MAX_HOURS = 14;
-
     function log(msg) {
         var time = new Date().toISOString().substring(11, 19);
         var line = '[' + time + '] ' + msg;
@@ -265,7 +261,6 @@
             if (countdownEl) countdownEl.textContent = '';
             mainBtn.focus();
             mainBtn.onclick = function() {
-                clearSession();
                 run();
             };
         }
@@ -297,31 +292,6 @@
         return { appId: 'tUb3Xq7Lm9.Tube', serviceId: 'tUb3Xq7Lm9.TubeService' };
     }
 
-    function markSessionActive() {
-        try {
-            localStorage.setItem(SESSION_KEY, 'true');
-            localStorage.setItem(SESSION_TIME_KEY, String(Date.now()));
-        } catch (e) {}
-    }
-
-    function clearSession() {
-        try {
-            localStorage.removeItem(SESSION_KEY);
-            localStorage.removeItem(SESSION_TIME_KEY);
-        } catch (e) {}
-    }
-
-    function isSessionActiveStored() {
-        try {
-            var active = localStorage.getItem(SESSION_KEY);
-            var timestamp = parseInt(localStorage.getItem(SESSION_TIME_KEY), 10) || 0;
-            if (active === 'true' && (Date.now() - timestamp) < SESSION_MAX_HOURS * 60 * 60 * 1000) {
-                return true;
-            }
-        } catch (e) {}
-        return false;
-    }
-
     // Check if background service process is actively registered in running app contexts
     function checkLiveContext(serviceId) {
         return new Promise(function(resolve) {
@@ -345,7 +315,7 @@
         });
     }
 
-    // Non-blocking fast socket ping (200ms)
+    // Non-blocking fast socket ping (150ms timeout)
     function quickPing(url) {
         return new Promise(function(resolve) {
             var xhr = new XMLHttpRequest();
@@ -355,7 +325,7 @@
                 done = true;
                 try { xhr.abort(); } catch (e) {}
                 resolve(false);
-            }, 200);
+            }, 150);
 
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4 && !done) {
@@ -376,30 +346,26 @@
         });
     }
 
-    async function isServicePreviouslyLaunched(serviceId) {
+    // Strictly verifies live running state in memory (no disk localStorage memory).
+    // On TV restart, port 8099 is closed and context is absent, ensuring a clean start every restart!
+    async function isServiceActivelyRunning(serviceId) {
         // 1. Check live process context
         var runningInContext = await checkLiveContext(serviceId);
         if (runningInContext) {
-            log('Background service verified running in system process list.');
+            log('Background service process verified alive in system context.');
             return true;
         }
 
-        // 2. Quick non-blocking socket ping
+        // 2. Quick live socket ping (if alive, responds in <5ms)
         var endpoints = [
             'http://127.0.0.1:8099/__tube/ping',
             'http://127.0.0.2:8099/__tube/ping'
         ];
         for (var i = 0; i < endpoints.length; i++) {
             if (await quickPing(endpoints[i])) {
-                log('Background service actively responding on port 8099.');
+                log('Background service actively listening on port 8099.');
                 return true;
             }
-        }
-
-        // 3. Check persistent session memory
-        if (isSessionActiveStored()) {
-            log('Background service was previously launched in this session.');
-            return true;
         }
 
         return false;
@@ -572,21 +538,21 @@
         targetServiceId = targets.serviceId;
         log('Target App: ' + targetAppId + ' | Target Service: ' + targetServiceId);
 
-        // Check if service previously launched successfully or is actively running in this session
-        setStatus('Checking service session state...');
-        var alreadyActive = await isServicePreviouslyLaunched(targetServiceId);
+        // Check live memory status: is the service actively running right now?
+        setStatus('Checking background service status...');
+        var alreadyActive = await isServiceActivelyRunning(targetServiceId);
         if (alreadyActive) {
-            log('Service active from current session. Launching YouTube...');
+            log('Background service is already active. Launching YouTube...');
             promptStartApp(targetAppId);
             return;
         }
 
-        // If not already active, trigger background service start
-        setStatus('Starting YT background service...');
+        // Clean start on every TV restart or initial launch:
+        log('Clean start: starting background service...');
+        setStatus('Starting YT service & launcher...');
         var acknowledged = await startService(targetServiceId);
 
         if (acknowledged) {
-            markSessionActive();
             promptStartApp(targetAppId);
         } else {
             showError(new Error('Background service launch could not be acknowledged.'));
