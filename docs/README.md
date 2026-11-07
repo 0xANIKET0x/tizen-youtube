@@ -42,12 +42,24 @@ Install **both** `.wgt` packages on your TV:
 1. **`tube-tizen-5.5.wgt`** (The main YouTube app & Node background service)
 2. **`tube-launcher.wgt`** (**YT service and launcher**)
 
-#### Installing via SDB:
+#### Installation Methods:
+
+##### Option A: Installing via Apps2Samsung (Recommended GUI)
+You can also install both `.wgt` files easily using **Apps2Samsung**:
+1. Download `tube-tizen-5.5.wgt` and `tube-launcher.wgt` from [Releases](https://github.com/0xANIKET0x/tizen-youtube/releases/tag/v1.5.1-tizen10).
+2. Open **Apps2Samsung** on your computer.
+3. Sign both widgets using your Samsung Author / Partner Certificate.
+4. Connect to your TV IP address and install both packages.
+
+##### Option B: Installing via SDB (Command Line)
 ```bash
 sdb connect <YOUR_TV_IP>
 sdb install release/tube-tizen-5.5.wgt
 sdb install release/tube-launcher.wgt
 ```
+
+##### Option C: Installing via TizenBrew
+Load both packages through the **Upload** tab in TizenBrew.
 
 #### How to use:
 - On your TV home screen, launch **YT service and launcher**.
