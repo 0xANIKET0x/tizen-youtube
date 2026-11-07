@@ -1,94 +1,101 @@
 # YouTube for Tizen
 
-Ad-free YouTube on a Samsung TV.
+Ad-free YouTube on a Samsung TV with native Cobalt performance.
 
 <img src="../app/icon.png" width="96" align="right">
 
-- Adverts and sponsor segments gone, on the TV's own YouTube client
-- Own homescreen app
-- Using native Cobalt Container for perfect playback performance
-- Tizen 5.0 and up
-
-**Discord**: https://discord.gg/WjxVnrsV4A
+- Adverts and sponsor segments gone, running in the TV's own YouTube client
+- Dedicated homescreen application
+- Uses native Cobalt container for hardware-accelerated 4K/HDR/60fps playback
+- Tizen 5.0 up to Tizen 10.0
 
 ---
 
-## Why this one
+## Tizen 9 & 10 Workaround (Issue #101 Fix)
 
-Recent Samsung TVs carry Cobalt, the engine YouTube built for televisions: it is what the
-stock YouTube app runs in, tuned by Samsung and YouTube for each model. This app runs inside that
-same engine, not the TV's web browser. So what you watch is the stock app's own playback, with the
-4K, HDR and smooth 60fps your set was made for, and none of the adverts.
+On Samsung TVs running **Tizen 9.0 and 10.0**, Samsung modified the Web Runtime (WRT) process lifecycle:
+- Background services configured with `on-boot="true"` or `auto-restart="true"` are no longer automatically awakened by the OS.
+- When launching the standard Tube application, Samsung TV opens the native Cobalt container directly (`com.samsung.tv.cobalt-yt`). Because Cobalt runs in a restricted sandbox without WRT APIs, it cannot start the background service and gets stuck indefinitely on:
+  ```text
+  service: not answering yet (10s)...
+  ```
+- Tizen 9 and 10 require the service to be awakened via the Web Runtime `wrt:service` module (`new Service('tUb3Xq7Lm9.TubeService').start()`).
 
-The mods are built the same way. Wherever they can, they change what YouTube is told rather than
-painting over it, and leave the drawing to YouTube itself. The start page opens the way a YouTube
-link would, scroll speed is YouTube's own animation run faster, quality is set per video through
-the player's own controls, and every setting is a real row in YouTube's own Settings.
+### The Fix: "YT service and launcher"
 
-| | This app | [TizenTube](https://github.com/reisxd/TizenTube) |
-| --- | --- | --- |
-| Runs on | Samsung TVs, Tizen 5.0+ | Samsung TVs, Tizen 3+ (Or 6.5+ Cobalt) |
-| Engine | Samsung's own Cobalt, same as stock YouTube | The TV's browser or early buggy development copy of Cobalt engine from this project |
-| Updates | Through Tizen Homebrew; the mods ship inside the app. | Mods pulled from a public CDN at launch, unchecked; if it's unreachable, the ads are back |
-| Settings | Rows in YouTube's own Settings | A separate pop-up menu, behind one Settings entry or the green button |
-| Ad blocking | ✓ | ✓ |
-| SponsorBlock bar | Perfectly integrated in the native player UI | A fixed-width strip, misaligned on chaptered videos, popping in and out |
-| DeArrow | Titles and thumbnails swapped in as the feed arrives | Broken |
-| Preferred quality | Set before each video streams; nearest at or below your pick. | Switched after the video starts, so the picture jumps or re-buffers; previews forced up too |
-| Start page | Opens first, and after an account switch | Home loads, then it jumps; with none set, Home reloads every launch |
-| Who's watching | Hidden, and answered for you if it shows anyway | Only pushes its timer back; no fallback when it shows |
-| Scroll speed | Up to 3× | Stuck at stock speed |
-| Rapid press | Presses kept | Presses dropped while the feed moves |
-| Smoother navigation | ✓ | ✗ |
-| Hide the Up next card | ✓ | ✗ |
-| Hide the shopping card | ✓ | ✗ |
-| Dislike button | ✓ | ✗ |
+This fork includes **YT service and launcher** (`tube-launcher.wgt`), a lightweight Tizen WRT companion application that:
+1. Awakens `tUb3Xq7Lm9.TubeService` via `wrt:service`.
+2. As soon as the service start is acknowledged, displays **"You can open YT now"**.
+3. Immediately transitions into YouTube (`tUb3Xq7Lm9.Tube`).
+4. **Session-Aware Re-launch**: Detects live process contexts and session state in memory. Any repeat launch within the same session bypasses re-starting the service and launches YouTube directly every single time.
 
 ---
 
-## Install
+## Installation
 
-### Tizen Homebrew
+Download the pre-compiled widgets from the [Releases](https://github.com/0xANIKET0x/tizen-youtube/releases/tag/v1.5.1-tizen10) page or the [`release/`](../release/) directory in this repo.
 
-The easy one. No computer needed after setup, even for updates.
+### For Tizen 9.0 and 10.0 TVs (Recommended)
 
-1. Set up [Tizen Homebrew](https://github.com/SushyDev/tizen-homebrew) once, by its README.
-2. Open it on the TV.
-3. Pick this app out of the catalogue.
+Install **both** `.wgt` packages on your TV:
 
-### Apps2Samsung, with a partner certificate
+1. **`tube-tizen-5.5.wgt`** (The main YouTube app & Node background service)
+2. **`tube-launcher.wgt`** (**YT service and launcher**)
 
-Apps2Samsung also works, signed with your own Samsung partner certificate.
-Please join the Discord linked above if you need help.
-
-### Building it yourself
-
-For the Homebrew route, if you would rather not use the catalogue, with **Node 20+**:
-
-```sh
-git clone https://github.com/SushyDev/tizen-youtube.git
-cd tizen-youtube
-npm install
-npm run package    # release/tube-tizen-5.5.wgt and tube-tizen-5.0.wgt, for Tizen Homebrew
+#### Installing via SDB:
+```bash
+sdb connect <YOUR_TV_IP>
+sdb install release/tube-tizen-5.5.wgt
+sdb install release/tube-launcher.wgt
 ```
 
-Load the one for your TV — `tube-tizen-5.5.wgt` from Tizen 5.5, `tube-tizen-5.0.wgt` from 5.0 — through
-Homebrew's **Upload** tab; [DEVELOP.md](DEVELOP.md) has the other commands.
+#### How to use:
+- On your TV home screen, launch **YT service and launcher**.
+- The service will start, display **"You can open YT now"**, and hand off to YouTube automatically.
 
 ---
 
-Licensed GPL-3.0-only. Derived from
-[TizenTube](https://github.com/reisxd/TizenTube) and
-[youtube-webos](https://github.com/webosbrew/youtube-webos), and from the people
-who worked out what a Samsung TV will and will not allow.
+### For Tizen 5.5 to 8.x TVs
+Only the main widget is needed:
+- Install `tube-tizen-5.5.wgt`.
 
-Sponsor segments, retitled clickbait and dislike counts come from
-[SponsorBlock](https://github.com/ajayyy/SponsorBlock),
-[DeArrow](https://github.com/ajayyy/DeArrow) and
-[Return YouTube Dislike](https://github.com/Anarios/return-youtube-dislike).
+### For Tizen 5.0 TVs
+- Install `tube-tizen-5.0.wgt`.
 
-The Cobalt container route was first published here on 2026-09-06, in
-[#16](https://github.com/SushyDev/tizen-youtube/pull/16),
-[#26](https://github.com/SushyDev/tizen-youtube/pull/26) and
-[#27](https://github.com/SushyDev/tizen-youtube/pull/27). TizenTube's own Cobalt build followed on
-2026-09-11; [REISXD.md](REISXD.md) compares the two.
+---
+
+## Building from Source
+
+Requirements: **Node.js 20+**
+
+```bash
+git clone https://github.com/0xANIKET0x/tizen-youtube.git
+cd tizen-youtube
+npm install
+node tools/package.js
+```
+
+All compiled `.wgt` packages will be generated inside the `release/` folder:
+- `release/tube-tizen-5.5.wgt`
+- `release/tube-launcher.wgt`
+- `release/tube-tizen-5.0.wgt`
+
+---
+
+## Features
+
+| Feature | Details |
+| --- | --- |
+| **Engine** | Samsung's own Cobalt container (identical to stock YouTube TV client) |
+| **Ad blocking** | Native ad suppression with zero buffering jumps |
+| **SponsorBlock** | Seamlessly integrated segment skipping |
+| **DeArrow** | Clickbait titles and thumbnails swapped as feed arrives |
+| **Return YouTube Dislike** | Real dislike counts displayed in player UI |
+| **Video Quality** | Hardware-accelerated 4K, HDR, 60fps |
+| **Tizen 9 & 10 Support** | Zero-lag background service bridge |
+
+---
+
+## License
+
+Licensed under GPL-3.0. Upstream project by [SushyDev](https://github.com/SushyDev/tizen-youtube). Derived from [TizenTube](https://github.com/reisxd/TizenTube) and [youtube-webos](https://github.com/webosbrew/youtube-webos).
