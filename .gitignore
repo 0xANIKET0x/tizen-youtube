@@ -2,9 +2,7 @@ node_modules/
 dist/
 dist-legacy/
 .dev/
-release/
 .package/
-*.wgt
 *.p12
 *.log
 
